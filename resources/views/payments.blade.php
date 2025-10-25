@@ -32,7 +32,7 @@
 
                     const list = document.getElementById('paymentsList');
                     const li = document.createElement('li');
-                    li.textContent = `💸 Invoice ${e.payment.invoice_id} — ${e.payment.amount} ${e.payment.currency} (${e.payment.status})`;
+                    li.textContent = ` Invoice ${e.payment.invoice_id} — ${e.payment.amount} ${e.payment.currency} (${e.payment.status})`;
 
                     list.insertBefore(li, list.firstChild); // add new one on top
                 });
