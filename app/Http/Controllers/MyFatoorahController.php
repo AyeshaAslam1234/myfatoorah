@@ -9,6 +9,7 @@ use MyFatoorah\Library\MyFatoorah;
 use MyFatoorah\Library\API\Payment\MyFatoorahPayment;
 use MyFatoorah\Library\API\Payment\MyFatoorahPaymentEmbedded;
 use MyFatoorah\Library\API\Payment\MyFatoorahPaymentStatus;
+use App\Models\Payment;
 use Exception;
 
 class MyFatoorahController extends Controller {
@@ -97,22 +98,48 @@ class MyFatoorahController extends Controller {
      * 
      * @return Response
      */
-    public function callback() {
+    
+   public function callback()
+    {
         try {
             $paymentId = request('paymentId');
 
             $mfObj = new MyFatoorahPaymentStatus($this->mfConfig);
             $data  = $mfObj->getPaymentStatus($paymentId, 'PaymentId');
 
+            // Determine status message
             $message = $this->getTestMessage($data->InvoiceStatus, $data->InvoiceError);
 
-            $response = ['IsSuccess' => true, 'Message' => $message, 'Data' => $data];
+            // Save or update payment record
+            // After saving the payment
+            $payment = Payment::updateOrCreate(
+                ['invoice_id' => $data->InvoiceId],
+                [
+                    'customer_reference' => $data->CustomerReference,
+                    'amount'             => $data->InvoiceValue,
+                    'currency'           => $data->InvoiceDisplayCurrencyIso ?? $data->InvoiceCurrency ?? 'KWD',
+                    'status'             => $data->InvoiceStatus,
+                    'payment_method'     => $data->InvoiceTransactions[0]->PaymentGateway ?? 'Unknown',
+                ]
+            );
+
+            // Broadcast new payment
+            event(new \App\Events\PaymentReceived($payment));
+
+
+            // Redirect based on status
+            if (in_array(strtolower($data->InvoiceStatus), ['paid', 'success'])) {
+                return redirect()->route('payment.success')->with('message', $message);
+            } else {
+                return redirect()->route('payment.failure')->with('message', $message);
+            }
+
         } catch (Exception $ex) {
             $exMessage = __('myfatoorah.' . $ex->getMessage());
-            $response  = ['IsSuccess' => 'false', 'Message' => $exMessage];
+            return redirect()->route('payment.failure')->with('message', $exMessage);
         }
-        return response()->json($response);
     }
+
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
