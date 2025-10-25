@@ -7,7 +7,7 @@
 </head>
 <body style="font-family: sans-serif; padding: 20px;">
 
-    <h2>💳 Live Payments</h2>
+    <h2> Live Payments</h2>
     <ul id="paymentsList">
         @forelse ($payments as $payment)
             <li>
